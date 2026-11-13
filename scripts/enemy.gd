@@ -13,6 +13,24 @@ var navigation := AStarGrid2D.new()
 var navigation_ready := false
 var route := PackedVector3Array()
 var repath_time := 0.0
+var mark_time := 0.0
+var combo_time := 0.0
+var mark_visual: MeshInstance3D
+
+func apply_mark() -> void:
+	if health > 0:
+		mark_time = 5.0
+		mark_visual.visible = true
+
+func receive_finisher() -> void:
+	if health <= 0:
+		return
+	var marked := mark_time > 0
+	mark_time = 0
+	mark_visual.visible = false
+	if marked:
+		combo_time = 1.5
+	take_damage(60 if marked else 35)
 
 # Prototype: ground-level navigation for the current static arena only.
 func build_navigation() -> void:
@@ -101,8 +119,23 @@ func _ready() -> void:
 	material.albedo_color = Color("ca6478")
 	mesh.material_override = material
 	add_child(mesh)
+	mark_visual = MeshInstance3D.new()
+	var ring := TorusMesh.new()
+	ring.inner_radius = 0.65
+	ring.outer_radius = 0.85
+	mark_visual.mesh = ring
+	mark_visual.position.y = 0.12
+	var glow := StandardMaterial3D.new()
+	glow.albedo_color = Color("67d9cf")
+	glow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mark_visual.material_override = glow
+	mark_visual.visible = false
+	add_child(mark_visual)
 
 func _physics_process(delta: float) -> void:
+	mark_time = maxf(0.0, mark_time - delta)
+	combo_time = maxf(0.0, combo_time - delta)
+	mark_visual.visible = mark_time > 0 and health > 0
 	if health <= 0:
 		return
 	cooldown = maxf(0, cooldown - delta)
@@ -125,8 +158,9 @@ func _physics_process(delta: float) -> void:
 			attack_direction = offset.normalized()
 		elif offset.length() < 11 and offset.length() > 1.5:
 			var direction := pursuit_direction(delta)
-			velocity.x = direction.x * 2.8
-			velocity.z = direction.z * 2.8
+			var speed := 1.4 if mark_time > 0 else 2.8
+			velocity.x = direction.x * speed
+			velocity.z = direction.z * speed
 		else:
 			clear_pursuit()
 	else:
@@ -141,6 +175,8 @@ func take_damage(amount: int) -> void:
 		return
 	health = maxi(0, health - amount)
 	if health == 0:
+		mark_time = 0
+		mark_visual.visible = false
 		clear_pursuit()
 		windup = 0
 		velocity = Vector3.ZERO
@@ -148,6 +184,9 @@ func take_damage(amount: int) -> void:
 	health_changed.emit()
 
 func reset_combat() -> void:
+	mark_time = 0
+	combo_time = 0
+	mark_visual.visible = false
 	clear_pursuit()
 	health = MAX_HEALTH
 	windup = 0
