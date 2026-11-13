@@ -28,6 +28,10 @@ func walk(player: CharacterBody3D, point: Vector3) -> void:
 			break
 		for action in ["move_left", "move_right", "move_forward", "move_back"]:
 			Input.action_release(action)
+		# Release early near a waypoint so acceleration does not carry us past it.
+		if Vector2(offset.x, offset.z).length() < 0.8 and Vector2(player.velocity.x, player.velocity.z).length() > 2:
+			await physics_frame
+			continue
 		if absf(offset.x) > 0.14:
 			Input.action_press("move_right" if offset.x > 0 else "move_left")
 		if absf(offset.z) > 0.14:
@@ -37,7 +41,7 @@ func walk(player: CharacterBody3D, point: Vector3) -> void:
 	for action in ["move_left", "move_right", "move_forward", "move_back"]:
 		Input.action_release(action)
 	await frames(10)
-	check(Vector2(player.position.x - point.x, player.position.z - point.z).length() < 0.55, "Route waypoint must be reachable: %s" % point)
+	check(Vector2(player.position.x - point.x, player.position.z - point.z).length() < 0.55, "Route waypoint must be reachable: %s; actual %s; HP %d" % [point, player.position, player.health])
 	check(player.is_on_floor(), "Hero must stand on floor at route waypoints")
 
 func run() -> void:
@@ -88,7 +92,7 @@ func run() -> void:
 	inspect.pressed = true
 	Input.parse_input_event(inspect)
 	Input.flush_buffered_events()
-	check(station.quest.rewards == 1, "Walked route must finish the existing inspection quest")
+	check(station.quest.rewards == 0, "Bypass cannot skip mechanism and reinforced guard")
 	# A return trip also catches one-way collision traps.
 	for point in [Vector3(4.75, 0, -10), Vector3(4.75, 0, -3), Vector3(0, 0, -3), Vector3(0, 0, 8), Vector3(0, 0, 13), Vector3(0, 0, 8)]:
 		await walk(player, point)

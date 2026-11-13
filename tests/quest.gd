@@ -28,6 +28,14 @@ func accept_dialogue() -> void:
 	for i in range(3):
 		key(KEY_ENTER)
 
+# Focused quest/playback fixtures use direct damage; the integrated route uses live combat.
+func clear_final_guard(world: Node3D) -> void:
+	world.puzzle.activate(0)
+	world.puzzle.activate(1)
+	world.advance_prologue()
+	world.final_enemy.take_damage(world.final_enemy.max_health)
+	world.advance_prologue()
+
 func run() -> void:
 	var arena = load("res://scenes/main.tscn").instantiate()
 	root.add_child(arena)
@@ -48,13 +56,14 @@ func run() -> void:
 	accept_dialogue()
 	check(quest.stage == quest.Stage.DEFEAT_GUARD, "Only accepted dialogue starts first objective")
 	await process_frame
-	check(quest.stage == quest.Stage.INSPECT_STATION, "Defeated guard advances accepted objective")
+	check(quest.stage == quest.Stage.OPEN_PASSAGE, "Defeated guard advances accepted objective")
 	key(KEY_R)
-	check(quest.stage == quest.Stage.INSPECT_STATION and arena.dialogue.assignment_accepted, "R preserves quest")
+	check(quest.stage == quest.Stage.DEFEAT_GUARD and arena.dialogue.assignment_accepted, "R preserves quest")
 	player.position = arena.STATION_POINT
 	key(KEY_G)
 	check(quest.rewards == 0, "Respawned live guard blocks inspection")
 	enemy.take_damage(100)
+	clear_final_guard(arena)
 	player.position = Vector3(0, 0, 8)
 	key(KEY_G)
 	check(quest.rewards == 0, "Distant inspection must fail")
@@ -88,6 +97,7 @@ func run() -> void:
 	key(KEY_G)
 	check(quest.stage == quest.Stage.DEFEAT_GUARD and quest.rewards == 0, "New run cannot skip live guard")
 	enemy.take_damage(100)
+	clear_final_guard(arena)
 	await process_frame
 	player.position = arena.STATION_POINT
 	key(KEY_G)

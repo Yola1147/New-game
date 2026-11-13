@@ -2,7 +2,7 @@ extends RefCounted
 
 # Arena-only prototype: the reward is a test counter, not currency or canon.
 signal changed
-enum Stage { NOT_STARTED, DEFEAT_GUARD, INSPECT_STATION, COMPLETED }
+enum Stage { NOT_STARTED, DEFEAT_GUARD, OPEN_PASSAGE, DEFEAT_REINFORCED, INSPECT_STATION, COMPLETED }
 var stage := Stage.NOT_STARTED
 var rewards := 0
 
@@ -12,9 +12,16 @@ func accept() -> void:
 	stage = Stage.DEFEAT_GUARD
 	changed.emit()
 
-func observe_guard(defeated: bool) -> void:
-	if stage == Stage.DEFEAT_GUARD and defeated:
-		stage = Stage.INSPECT_STATION
+func observe_route(guard_defeated: bool, passage_open: bool, reinforced_defeated: bool) -> void:
+	if stage == Stage.NOT_STARTED or stage == Stage.COMPLETED:
+		return
+	var next := Stage.DEFEAT_GUARD
+	if guard_defeated:
+		next = Stage.OPEN_PASSAGE
+		if passage_open:
+			next = Stage.INSPECT_STATION if reinforced_defeated else Stage.DEFEAT_REINFORCED
+	if stage != next:
+		stage = next
 		changed.emit()
 
 func inspect(alive: bool, nearby: bool, guard_defeated: bool) -> void:
@@ -33,7 +40,9 @@ func journal_text() -> String:
 	var objectives := [
 		"F — получить поручение",
 		"Поручение получено. Цель: победить стража",
+		"Цель: открыть проход · E героя 1 → Q → E героя 2 у механизма",
+		"Цель: победить усиленного стража в дальней комнате",
 		"Цель: найти Эхо памяти · G у бирюзовой площадки",
-		"Поручение выполнено: найдено Эхо памяти · G рядом — повтор записи",
+		"Поручение выполнено · Пролог завершён · G рядом — повтор записи",
 	]
 	return "Журнал · Исследовать станцию (прототип)\n%s\nТестовых наград: %d · R — новый бой · T — сброс боя и квеста" % [objectives[stage], rewards]
