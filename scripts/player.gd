@@ -7,6 +7,19 @@ signal health_changed
 signal defeated
 
 const MAX_HEALTH := 100
+# Team equipment prototype; derive damage from base stats, never add repeatedly.
+const BASE_ATTACK_DAMAGE := 25
+const BLADE_BONUS := 5
+var blade_owned := false
+var blade_equipped := false
+
+func attack_damage() -> int:
+	return BASE_ATTACK_DAMAGE + (BLADE_BONUS if blade_owned and blade_equipped else 0)
+
+func toggle_equipment() -> void:
+	if blade_owned and health > 0:
+		blade_equipped = not blade_equipped
+
 var health := MAX_HEALTH
 var attack_time := 0.0
 var attack_hit := false
@@ -198,7 +211,7 @@ func start_attack() -> bool:
 func resolve_attack() -> void:
 	for enemy in get_tree().get_nodes_in_group("enemies"):
 		if can_reach(enemy, 2.4):
-			enemy.take_damage(25)
+			enemy.take_damage(attack_damage())
 
 func take_damage(amount: int) -> void:
 	if health <= 0 or invulnerability > 0:
