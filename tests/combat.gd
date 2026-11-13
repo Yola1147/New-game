@@ -23,13 +23,18 @@ func run() -> void:
 	await frames(90)
 	player.position = Vector3(0, 0, 5)
 	enemy.position = Vector3(0, 0, 3.3)
-	player.pivot.rotation.y = 0
+	player.visual.rotation.y = 0
+	player.pivot.rotation.y = PI / 2
 	check(player.start_attack(), "First attack must start")
+	check(is_zero_approx(player.visual.rotation.y), "Side camera must not turn hero when attacking")
+	check(is_equal_approx(player.pivot.rotation.y, PI / 2), "Attack must not turn camera")
+	player.pivot.rotation.y = PI
 	check(not player.start_attack(), "Attack cooldown must block spam")
 	await frames(20)
-	check(enemy.health == 75, "Single swing must deal damage once")
+	check(enemy.health == 75, "Swing must hit in hero facing direction even when camera turns")
 	await frames(20)
 	check(enemy.health == 75, "Swing must not damage repeatedly")
+	player.pivot.rotation.y = 0
 	enemy.position = Vector3(0, 0, 7)
 	player.start_attack()
 	await frames(35)

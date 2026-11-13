@@ -49,7 +49,7 @@ func _ready() -> void:
 	panel.position = Vector2(18, 18)
 	hud.add_child(panel)
 	var label := Label.new()
-	label.text = "NEW GAME · Боевая арена\nWASD — движение • Мышь — камера • Пробел — прыжок\nЛКМ — удар по направлению камеры • Esc — курсор • R — новый бой\nПодойдите к красному стражу. Оранжевый цвет предупреждает об ударе."
+	label.text = "NEW GAME · Боевая арена\nWASD — движение • Мышь — камера • Пробел — прыжок\nЛКМ — удар перед персонажем • Esc — курсор • R — новый бой\nПодойдите к красному стражу. Оранжевый цвет предупреждает об ударе."
 	label.add_theme_font_size_override("font_size", 18)
 	panel.add_child(label)
 	status = Label.new()

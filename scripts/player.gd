@@ -121,7 +121,6 @@ func start_attack() -> bool:
 		return false
 	attack_time = 0.5
 	attack_hit = false
-	visual.rotation.y = pivot.rotation.y
 	return true
 
 func resolve_attack() -> void:
