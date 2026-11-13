@@ -9,6 +9,10 @@ const SaveGame = preload("res://scripts/save_game.gd")
 var persistence_enabled := not "--script" in OS.get_cmdline_args()
 var save_path := SaveGame.PATH
 var save_status: Label
+var save_hint: Label
+var save_button: Button
+const CHECKPOINT := Vector3(0, 0, 8)
+const CHECKPOINT_RADIUS := 3.0
 const STATION_POINT := Vector3(4, 0, -10)
 var puzzle: Node3D
 var quest := Quest.new()
@@ -109,9 +113,32 @@ func _ready() -> void:
 	quest.changed.connect(update_journal)
 	update_status()
 	save_status = Label.new()
-	save_status.position = Vector2(18, 690)
-	save_status.add_theme_font_size_override("font_size", 16)
-	hud.add_child(save_status)
+	var save_panel := PanelContainer.new()
+	save_panel.position = Vector2(770, 130)
+	save_panel.custom_minimum_size.x = 480
+	hud.add_child(save_panel)
+	var save_column := VBoxContainer.new()
+	save_panel.add_child(save_column)
+	save_status.custom_minimum_size.x = 480
+	save_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	save_status.add_theme_font_size_override("font_size", 18)
+	save_column.add_child(save_status)
+	var save_buttons := HBoxContainer.new()
+	save_column.add_child(save_buttons)
+	save_button = Button.new()
+	save_button.text = "Сохранить (F5)"
+	save_button.focus_mode = Control.FOCUS_NONE
+	save_button.pressed.connect(save_checkpoint)
+	save_buttons.add_child(save_button)
+	var load_button := Button.new()
+	load_button.text = "Загрузить (F9)"
+	load_button.focus_mode = Control.FOCUS_NONE
+	load_button.pressed.connect(load_checkpoint)
+	save_buttons.add_child(load_button)
+	save_hint = Label.new()
+	save_hint.position = Vector2(18, 690)
+	save_hint.add_theme_font_size_override("font_size", 16)
+	hud.add_child(save_hint)
 	save_status.text = "F5 — сохранить у входа · F9 — загрузить · T — новая игра (удалить слот)"
 	if persistence_enabled:
 		load_checkpoint()
@@ -140,8 +167,8 @@ func _input(event: InputEvent) -> void:
 		return
 	if event.is_echo():
 		return
-	if event is InputEventKey and event.pressed and event.physical_keycode in [KEY_F5, KEY_F9]:
-		if event.physical_keycode == KEY_F5:
+	if event is InputEventKey and event.pressed and (event.physical_keycode in [KEY_F5, KEY_F9] or event.keycode in [KEY_F5, KEY_F9]):
+		if event.physical_keycode == KEY_F5 or event.keycode == KEY_F5:
 			save_checkpoint()
 		else:
 			load_checkpoint()
@@ -229,6 +256,10 @@ func _process(delta: float) -> void:
 			echo_status.text = ""
 	advance_prologue()
 	update_status()
+	if is_instance_valid(save_hint):
+		var reason := checkpoint_block_reason()
+		save_hint.text = "F5 — сохранить · F9 — загрузить · Esc — курсор для кнопок" if reason.is_empty() else "F5: " + reason
+		save_button.disabled = not reason.is_empty()
 
 func update_journal() -> void:
 	# Completion grants one item; repeated journal updates preserve the chosen state.
@@ -263,17 +294,30 @@ func checkpoint_data() -> Dictionary:
 		"final_guard": route_cleared(), "owned": player.blade_owned,
 		"equipped": player.blade_equipped}
 
-func save_checkpoint() -> bool:
-	if dialogue.active or player.health <= 0 or player.attack_time > 0 or player.global_position.distance_to(Vector3(0, 0, 8)) > 3:
-		save_status.text = "Сохранение: вернитесь живым героем ко входу (0, 8), вне атаки."
-		return false
+func checkpoint_block_reason() -> String:
+	if dialogue.active:
+		return "закройте диалог перед сохранением."
+	if player.health <= 0:
+		return "выберите живого героя (Q)."
+	if player.attack_time > 0:
+		return "дождитесь окончания удара."
+	if player.global_position.distance_to(CHECKPOINT) > CHECKPOINT_RADIUS:
+		return "встаньте в жёлтый круг у входа (до точки %.1f м)." % player.global_position.distance_to(CHECKPOINT)
 	# A pursuing guard must not turn the entrance into a combat save point.
 	for guard in get_tree().get_nodes_in_group("enemies"):
 		if guard.health > 0 and guard.global_position.distance_to(player.global_position) < 11.5:
-			save_status.text = "Сохранение недоступно: рядом страж. R возвращает бой к началу."
-			return false
+			return "рядом страж — завершите бой или отойдите от него."
+	return ""
+
+func save_checkpoint() -> bool:
+	var reason := checkpoint_block_reason()
+	if not reason.is_empty():
+		save_status.text = "НЕ СОХРАНЕНО: " + reason
+		save_status.modulate = Color("ffd479")
+		return false
 	var saved := SaveGame.write_slot(checkpoint_data(), save_path)
 	save_status.text = "Сохранено · F9 — загрузить · T — новая игра" if saved else "Ошибка записи: прежний слот сохранён."
+	save_status.modulate = Color("9dffc0") if saved else Color("ffd479")
 	return saved
 
 func load_checkpoint() -> bool:
@@ -309,6 +353,7 @@ func load_checkpoint() -> bool:
 	advance_prologue()
 	update_journal()
 	save_status.text = "Загружено у входа · F5 — сохранить · T — новая игра"
+	save_status.modulate = Color("9dffc0")
 	return true
 
 func ability_status(index: int) -> String:

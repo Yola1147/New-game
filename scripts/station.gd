@@ -12,6 +12,19 @@ static func build(world: Node3D) -> void:
 	for x in [-3.5, 3.5]:
 		world.block(Vector3(x, 1.8, 11), Vector3(1, 3.6, 1), Color("8997a8"))
 	world.block(Vector3(0, 3.5, 11), Vector3(8, 0.6, 1), Color("8997a8"))
+	# Technical checkpoint marker only; no collision or new world mechanic.
+	var checkpoint_ring := MeshInstance3D.new()
+	var ring := TorusMesh.new()
+	ring.inner_radius = world.CHECKPOINT_RADIUS - 0.1
+	ring.outer_radius = world.CHECKPOINT_RADIUS
+	checkpoint_ring.scale.y = 0.3
+	checkpoint_ring.mesh = ring
+	checkpoint_ring.position = world.CHECKPOINT + Vector3(0, 0.06, 0)
+	var checkpoint_material := StandardMaterial3D.new()
+	checkpoint_material.albedo_color = Color("ffd479")
+	checkpoint_ring.material_override = checkpoint_material
+	world.add_child(checkpoint_ring)
+	signpost(world, Vector3(3.7, 1.5, 8), "СОХРАНЕНИЕ · F5\nВстаньте в жёлтый круг вне боя")
 	# Broken supports in the combat hall, with space to circle them.
 	for point in [Vector3(8, 1.5, -8), Vector3(8, 1.5, 3), Vector3(-10, 1.5, 5)]:
 		world.block(point, Vector3(2, 3, 2), Color("b3a5bd"))

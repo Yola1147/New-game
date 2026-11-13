@@ -30,6 +30,8 @@ try {
         if ($UserArgs.Count) { $arguments += @('--') + $UserArgs }
         & $engine.FullName @arguments
         if ($LASTEXITCODE -ne 0) { throw "Embedded pack regression failed: $Name" }
+        $testLog = Get-Content -LiteralPath (Join-Path $validation ($Name + ($UserArgs -join '-') + '.log')) -Raw
+        if ($testLog -match '(?m)(SCRIPT ERROR|ERROR:)') { throw "Embedded pack runtime error: $Name" }
     }
     foreach ($suite in @('smoke', 'combat', 'navigation', 'party', 'abilities', 'team_combat', 'dialogue', 'quest', 'station', 'puzzle', 'memory_echo', 'station_playthrough', 'prologue', 'equipment', 'save_load')) {
         if ($Graphics -and $suite -eq 'station_playthrough') {
