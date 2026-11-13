@@ -21,6 +21,37 @@ func run() -> void:
 	player.input_enabled = false
 	enemy.set_physics_process(false)
 	await frames(90)
+	# The click returning from Esc must capture the cursor without spending a swing.
+	player.input_enabled = true
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	var click := InputEventMouseButton.new()
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.pressed = true
+	Input.parse_input_event(click)
+	await frames(2)
+	check(player.attack_time == 0, "Cursor capture click must not start an attack")
+	if DisplayServer.get_name() != "headless":
+		check(Input.mouse_mode == Input.MOUSE_MODE_CAPTURED, "Capture click must restore mouse capture")
+		var release := InputEventMouseButton.new()
+		release.button_index = MOUSE_BUTTON_LEFT
+		Input.parse_input_event(release)
+		await frames(2)
+		Input.parse_input_event(click)
+		await frames(2)
+		check(player.attack_time > 0, "Next captured click must start an attack")
+	else:
+		print("Mouse capture/next click: skipped on headless; run combat.gd with graphics")
+	player.input_enabled = false
+	player.reset_combat()
+	click.pressed = false
+	Input.parse_input_event(click)
+	await frames(2)
+	click.pressed = true
+	Input.parse_input_event(click)
+	await frames(2)
+	check(player.attack_time == 0, "Disabled player input must not start an attack")
+	click.pressed = false
+	Input.parse_input_event(click)
 	player.position = Vector3(0, 0, 5)
 	enemy.position = Vector3(0, 0, 3.3)
 	player.visual.rotation.y = 0
