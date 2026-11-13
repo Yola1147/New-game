@@ -32,10 +32,20 @@ static func build(world: Node3D) -> void:
 	for z in [-3.0, -5.0, -7.0, -9.0]:
 		world.block(Vector3(4.75, 0.015, z), Vector3(1.4, 0.03, 1), Color("c9be91"))
 	world.block(Vector3(4, 0.025, -10), Vector3(3, 0.05, 3), Color("65cfc4"))
+	# Non-colliding temporary device: keep the inspected route traversable.
+	var device := MeshInstance3D.new()
+	var shape := PrismMesh.new()
+	shape.size = Vector3(0.6, 0.8, 0.5)
+	device.mesh = shape
+	device.position = Vector3(4, 0.85, -10)
+	var material := StandardMaterial3D.new()
+	material.albedo_color = Color("b9fff0")
+	device.material_override = material
+	world.add_child(device)
 	signpost(world, Vector3(0, 3.9, 11), "ВХОД · РУИНЫ СТАНЦИИ\nВременная геометрия")
 	signpost(world, Vector3(0, 2.8, -5.4), "ПРОХОД · МЕХАНИЗМ СЛЕВА\nОбход справа →")
 	signpost(world, Vector3(4.75, 3, -6), "ОБХОД")
-	signpost(world, Vector3(4, 2.5, -10), "МЕСТО НАХОДКИ · ПРОТОТИП\nG — осмотреть после победы")
+	signpost(world, Vector3(4, 2.5, -10), "ЭХО ПАМЯТИ · ПРОТОТИП\nG — запись после победы и поручения")
 
 static func signpost(world: Node3D, at: Vector3, text: String) -> void:
 	var label := Label3D.new()
