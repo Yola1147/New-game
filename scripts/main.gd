@@ -49,7 +49,7 @@ func _ready() -> void:
 	panel.position = Vector2(18, 18)
 	hud.add_child(panel)
 	var label := Label.new()
-	label.text = "NEW GAME · Боевая арена\nWASD — движение • Мышь — камера • Пробел — прыжок\nЛКМ — удар перед персонажем • Esc — курсор • R — новый бой\nПодойдите к красному стражу. Оранжевый цвет предупреждает об ударе."
+	label.text = "NEW GAME · Боевая арена\nWASD — движение • Мышь — камера • Пробел — прыжок\nЛКМ — удар • Q — смена героя • Esc — курсор • R — новый бой\nПодойдите к красному стражу. Оранжевый цвет предупреждает об ударе."
 	label.add_theme_font_size_override("font_size", 18)
 	panel.add_child(label)
 	status = Label.new()
@@ -64,7 +64,7 @@ func configure_input() -> void:
 		var click := InputEventMouseButton.new()
 		click.button_index = MOUSE_BUTTON_LEFT
 		InputMap.action_add_event("attack", click)
-	var bindings := {"move_forward": KEY_W, "move_back": KEY_S, "move_left": KEY_A, "move_right": KEY_D, "jump": KEY_SPACE, "release_mouse": KEY_ESCAPE, "reset": KEY_R}
+	var bindings := {"move_forward": KEY_W, "move_back": KEY_S, "move_left": KEY_A, "move_right": KEY_D, "jump": KEY_SPACE, "release_mouse": KEY_ESCAPE, "reset": KEY_R, "switch_character": KEY_Q}
 	for action: String in bindings:
 		if not InputMap.has_action(action):
 			InputMap.add_action(action)
@@ -84,9 +84,11 @@ func restart_battle() -> void:
 func update_status() -> void:
 	if not is_instance_valid(status):
 		return
-	status.text = "Герой: %d / 100    Страж: %d / 100" % [player.health, enemy.health]
-	if player.health <= 0:
+	status.text = "Герой %d: %d / 100    Резерв: %d / 100    Страж: %d / 100" % [player.active_character + 1, player.health, player.reserve_health, enemy.health]
+	if player.party_defeated():
 		status.text += "\nПоражение. R — повторить бой"
+	elif player.health <= 0:
+		status.text += "\nГерой погиб. Q — выбрать живого героя; R — новый бой"
 	elif enemy.health <= 0:
 		status.text += "\nПобеда! R — повторить бой"
 

@@ -10,6 +10,7 @@ const MAX_HEALTH := 100
 var health := MAX_HEALTH
 var attack_time := 0.0
 var attack_hit := false
+var attack_cancelled := false
 var invulnerability := 0.0
 var slash: MeshInstance3D
 var pivot: Node3D
@@ -17,6 +18,36 @@ var spring: SpringArm3D
 var visual: Node3D
 var spawn_position := Vector3(0, 2, 8)
 var input_enabled := true
+# Prototype party: one shared body/camera, two independent combat records.
+var active_character := 0
+var reserve_health := MAX_HEALTH
+var reserve_cooldown := 0.0
+var reserve_invulnerability := 0.0
+var body_material: StandardMaterial3D
+
+func switch_character() -> bool:
+	if reserve_health <= 0:
+		return false
+	var previous_health := health
+	var previous_cooldown := attack_time
+	var previous_invulnerability := invulnerability
+	health = reserve_health
+	attack_time = reserve_cooldown
+	invulnerability = reserve_invulnerability
+	reserve_health = previous_health
+	reserve_cooldown = previous_cooldown
+	reserve_invulnerability = previous_invulnerability
+	active_character = 1 - active_character
+	# Cancel the outgoing hit; its recovery continues while in reserve.
+	attack_hit = true
+	attack_cancelled = true
+	slash.visible = false
+	body_material.albedo_color = Color("67d9cf") if active_character == 0 else Color("b99aea")
+	health_changed.emit()
+	return true
+
+func party_defeated() -> bool:
+	return health <= 0 and reserve_health <= 0
 
 func _ready() -> void:
 	collision_layer = 2
@@ -37,6 +68,7 @@ func _ready() -> void:
 	mesh.position.y = 0.9
 	var material := StandardMaterial3D.new()
 	material.albedo_color = Color("67d9cf")
+	body_material = material
 	mesh.material_override = material
 	visual.add_child(mesh)
 	var marker := MeshInstance3D.new()
@@ -84,11 +116,15 @@ func _unhandled_input(event: InputEvent) -> void:
 			return
 	if event.is_action_pressed("attack") and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		start_attack()
+	if event.is_action_pressed("switch_character") and not event.is_echo():
+		switch_character()
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		pivot.rotation.y -= event.relative.x * 0.003
 		spring.rotation.x = clampf(spring.rotation.x - event.relative.y * 0.003, -1.15, 0.65)
 
 func _physics_process(delta: float) -> void:
+	reserve_cooldown = maxf(0.0, reserve_cooldown - delta)
+	reserve_invulnerability = maxf(0.0, reserve_invulnerability - delta)
 	invulnerability = maxf(0.0, invulnerability - delta)
 	if health <= 0:
 		return
@@ -98,7 +134,7 @@ func _physics_process(delta: float) -> void:
 		if attack_time <= 0.30 and not attack_hit:
 			attack_hit = true
 			resolve_attack()
-		slash.visible = attack_time > 0.16
+		slash.visible = attack_time > 0.16 and not attack_cancelled
 	var input_axis := Input.get_vector("move_left", "move_right", "move_forward", "move_back") if input_enabled else Vector2.ZERO
 	var direction := pivot.global_basis * Vector3(input_axis.x, 0, input_axis.y)
 	direction.y = 0
@@ -124,6 +160,7 @@ func start_attack() -> bool:
 		return false
 	attack_time = 0.5
 	attack_hit = false
+	attack_cancelled = false
 	return true
 
 func resolve_attack() -> void:
@@ -151,8 +188,15 @@ func take_damage(amount: int) -> void:
 		defeated.emit()
 
 func reset_combat() -> void:
+	active_character = 0
+	reserve_health = MAX_HEALTH
+	reserve_cooldown = 0
+	reserve_invulnerability = 0
+	body_material.albedo_color = Color("67d9cf")
 	health = MAX_HEALTH
 	attack_time = 0
+	attack_hit = false
+	attack_cancelled = false
 	invulnerability = 0
 	slash.visible = false
 	respawn()
