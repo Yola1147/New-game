@@ -1,6 +1,6 @@
 extends RefCounted
 
-# Arena-only prototype: the reward is a test counter, not currency or canon.
+# Prototype: one completion reward unlocks the team's training blade; no currency.
 signal changed
 enum Stage { NOT_STARTED, DEFEAT_GUARD, OPEN_PASSAGE, DEFEAT_REINFORCED, INSPECT_STATION, COMPLETED }
 var stage := Stage.NOT_STARTED

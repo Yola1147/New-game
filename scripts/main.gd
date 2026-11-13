@@ -16,6 +16,7 @@ var player: CharacterBody3D
 var final_enemy: CharacterBody3D
 var enemy: CharacterBody3D
 var status: Label
+var equipment_status: Label
 
 func _ready() -> void:
 	configure_input()
@@ -64,6 +65,12 @@ func _ready() -> void:
 	status.position = Vector2(18, 165)
 	status.add_theme_font_size_override("font_size", 24)
 	hud.add_child(status)
+	equipment_status = Label.new()
+	var equipment_panel := PanelContainer.new()
+	equipment_panel.position = Vector2(18, 457)
+	hud.add_child(equipment_panel)
+	equipment_status.add_theme_font_size_override("font_size", 18)
+	equipment_panel.add_child(equipment_status)
 	puzzle_panel = PanelContainer.new()
 	puzzle_panel.position = Vector2(18, 365)
 	hud.add_child(puzzle_panel)
@@ -86,6 +93,11 @@ func _ready() -> void:
 	update_status()
 
 func configure_input() -> void:
+	if not InputMap.has_action("toggle_equipment"):
+		InputMap.add_action("toggle_equipment")
+		var equip_key := InputEventKey.new()
+		equip_key.physical_keycode = KEY_I
+		InputMap.action_add_event("toggle_equipment", equip_key)
 	if not InputMap.has_action("attack"):
 		InputMap.add_action("attack")
 		var click := InputEventMouseButton.new()
@@ -103,6 +115,11 @@ func _input(event: InputEvent) -> void:
 	if dialogue.active:
 		return
 	if event.is_echo():
+		return
+	if event.is_action_pressed("toggle_equipment"):
+		player.toggle_equipment()
+		update_status()
+		get_viewport().set_input_as_handled()
 		return
 	if event.is_action_pressed("reset_quest"):
 		restart_quest()
@@ -157,7 +174,15 @@ func _process(_delta: float) -> void:
 	update_status()
 
 func update_journal() -> void:
+	# Completion grants one item; repeated journal updates preserve the chosen state.
+	if quest.rewards > 0 and not player.blade_owned:
+		player.blade_owned = true
+		player.blade_equipped = true
+	elif quest.rewards == 0:
+		player.blade_owned = false
+		player.blade_equipped = false
 	assignment_status.text = quest.journal_text()
+	update_status()
 
 func restart_quest() -> void:
 	if dialogue.active:
@@ -181,6 +206,10 @@ func ability_status(index: int) -> String:
 func update_status() -> void:
 	if not is_instance_valid(status):
 		return
+	var equipment := "награда за поручение"
+	if player.blade_owned:
+		equipment = "надет" if player.blade_equipped else "снят"
+	equipment_status.text = "Экипировка команды (прототип) · Учебный клинок: %s\nОбычный удар обоих героев: %d = 25 + %d · I — надеть / снять\nСпособности: 35 / 60 по метке · бонус только к обычному удару" % [equipment, player.attack_damage(), player.attack_damage() - 25]
 	puzzle_panel.visible = player.global_position.distance_to(puzzle.global_position) < 8
 	puzzle_status.text = puzzle.hint_text()
 	status.text = "Герой %d: %d / 100    Резерв: %d / 100    Страж: %d / 100" % [player.active_character + 1, player.health, player.reserve_health, enemy.health]
