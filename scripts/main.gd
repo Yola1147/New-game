@@ -1,7 +1,10 @@
 extends Node3D
 
 const Player = preload("res://scripts/player.gd")
+const Enemy = preload("res://scripts/enemy.gd")
 var player: CharacterBody3D
+var enemy: CharacterBody3D
+var status: Label
 
 func _ready() -> void:
 	configure_input()
@@ -33,17 +36,34 @@ func _ready() -> void:
 	player.name = "Player"
 	player.position = Vector3(0, 2, 8)
 	add_child(player)
+	enemy = Enemy.new()
+	enemy.position = Vector3(0, 1, -10)
+	enemy.target = player
+	add_child(enemy)
+	player.health_changed.connect(update_status)
+	player.defeated.connect(update_status)
+	enemy.health_changed.connect(update_status)
 	var hud := CanvasLayer.new()
 	add_child(hud)
 	var panel := PanelContainer.new()
 	panel.position = Vector2(18, 18)
 	hud.add_child(panel)
 	var label := Label.new()
-	label.text = "NEW GAME · Испытательная арена\nWASD — движение • Мышь — камера • Пробел — прыжок\nEsc — курсор • R — вернуться на старт\nПроверьте платформы и обход колонн. Боевая система — следующий этап."
+	label.text = "NEW GAME · Боевая арена\nWASD — движение • Мышь — камера • Пробел — прыжок\nЛКМ — удар по направлению камеры • Esc — курсор • R — новый бой\nПодойдите к красному стражу. Оранжевый цвет предупреждает об ударе."
 	label.add_theme_font_size_override("font_size", 18)
 	panel.add_child(label)
+	status = Label.new()
+	status.position = Vector2(18, 140)
+	status.add_theme_font_size_override("font_size", 24)
+	hud.add_child(status)
+	update_status()
 
 func configure_input() -> void:
+	if not InputMap.has_action("attack"):
+		InputMap.add_action("attack")
+		var click := InputEventMouseButton.new()
+		click.button_index = MOUSE_BUTTON_LEFT
+		InputMap.action_add_event("attack", click)
 	var bindings := {"move_forward": KEY_W, "move_back": KEY_S, "move_left": KEY_A, "move_right": KEY_D, "jump": KEY_SPACE, "release_mouse": KEY_ESCAPE, "reset": KEY_R}
 	for action: String in bindings:
 		if not InputMap.has_action(action):
@@ -51,6 +71,24 @@ func configure_input() -> void:
 		var event := InputEventKey.new()
 		event.physical_keycode = bindings[action]
 		InputMap.action_add_event(action, event)
+
+func _input(event: InputEvent) -> void:
+	if event.is_action_pressed("reset"):
+		restart_battle()
+
+func restart_battle() -> void:
+	player.reset_combat()
+	enemy.reset_combat()
+	update_status()
+
+func update_status() -> void:
+	if not is_instance_valid(status):
+		return
+	status.text = "Герой: %d / 100    Страж: %d / 100" % [player.health, enemy.health]
+	if player.health <= 0:
+		status.text += "\nПоражение. R — повторить бой"
+	elif enemy.health <= 0:
+		status.text += "\nПобеда! R — повторить бой"
 
 func block(at: Vector3, size: Vector3, color: Color) -> void:
 	var body := StaticBody3D.new()

@@ -5,7 +5,12 @@ $engine = Get-ChildItem "$PSScriptRoot/.tools/godot" -Filter '*console.exe' | Se
 if (-not $engine) { throw 'Godot missing: install Godot 4.x or open project.godot using your editor.' }
 $env:APPDATA = Join-Path $PSScriptRoot '.tools/profile'
 $env:LOCALAPPDATA = $env:APPDATA
-if ($Test) { & $engine.FullName --headless --path $PSScriptRoot --script tests/smoke.gd }
+if ($Test) {
+    foreach ($suite in @('tests/smoke.gd', 'tests/combat.gd')) {
+        & $engine.FullName --headless --path $PSScriptRoot --script $suite
+        if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    }
+}
 elseif ($Editor) { & $engine.FullName --path $PSScriptRoot --editor }
 else { & $engine.FullName --path $PSScriptRoot }
 exit $LASTEXITCODE

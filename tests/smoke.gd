@@ -17,6 +17,7 @@ func frames(count: int) -> void:
 func run() -> void:
 	var arena = load("res://scenes/main.tscn").instantiate()
 	root.add_child(arena)
+	arena.enemy.set_physics_process(false)
 	await frames(90)
 	var player = arena.player
 	check(player.is_on_floor(), "Player must land on arena floor")
