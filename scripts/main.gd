@@ -49,11 +49,11 @@ func _ready() -> void:
 	panel.position = Vector2(18, 18)
 	hud.add_child(panel)
 	var label := Label.new()
-	label.text = "NEW GAME · Боевая арена\nWASD — движение • Мышь — камера • Пробел — прыжок\nЛКМ — удар • Q — смена героя • Esc — курсор • R — новый бой\nПодойдите к красному стражу. Оранжевый цвет предупреждает об ударе."
+	label.text = "NEW GAME · Боевая арена (прототип)\nWASD — движение • Мышь — камера • Пробел — прыжок\nЛКМ — удар • Q — смена героя • E — способность • Esc — курсор • R — новый бой\nГерой 1: метка с 6 м и замедление на 5 с → Q → Герой 2: удар с 2.4 м\nМетка + удар: 60 вместо 35 урона. Оранжевый страж готовит атаку."
 	label.add_theme_font_size_override("font_size", 18)
 	panel.add_child(label)
 	status = Label.new()
-	status.position = Vector2(18, 140)
+	status.position = Vector2(18, 165)
 	status.add_theme_font_size_override("font_size", 24)
 	hud.add_child(status)
 	update_status()
@@ -64,7 +64,7 @@ func configure_input() -> void:
 		var click := InputEventMouseButton.new()
 		click.button_index = MOUSE_BUTTON_LEFT
 		InputMap.action_add_event("attack", click)
-	var bindings := {"move_forward": KEY_W, "move_back": KEY_S, "move_left": KEY_A, "move_right": KEY_D, "jump": KEY_SPACE, "release_mouse": KEY_ESCAPE, "reset": KEY_R, "switch_character": KEY_Q}
+	var bindings := {"move_forward": KEY_W, "move_back": KEY_S, "move_left": KEY_A, "move_right": KEY_D, "jump": KEY_SPACE, "release_mouse": KEY_ESCAPE, "reset": KEY_R, "switch_character": KEY_Q, "ability": KEY_E}
 	for action: String in bindings:
 		if not InputMap.has_action(action):
 			InputMap.add_action(action)
@@ -81,10 +81,29 @@ func restart_battle() -> void:
 	enemy.reset_combat()
 	update_status()
 
+func _process(_delta: float) -> void:
+	update_status()
+
+func ability_status(index: int) -> String:
+	var hp: int = player.health if index == player.active_character else player.reserve_health
+	if hp <= 0:
+		return "погиб"
+	var remaining: float = player.ability_cooldowns[index]
+	if remaining > 0:
+		return "%.1f с" % remaining
+	if index == player.active_character and player.attack_time > 0:
+		return "после удара"
+	return "готова"
+
 func update_status() -> void:
 	if not is_instance_valid(status):
 		return
 	status.text = "Герой %d: %d / 100    Резерв: %d / 100    Страж: %d / 100" % [player.active_character + 1, player.health, player.reserve_health, enemy.health]
+	status.text += "\n1 · Метка: %s    2 · Сильный удар: %s" % [ability_status(0), ability_status(1)]
+	if enemy.mark_time > 0:
+		status.text += "\nСтраж замедлен · Метка: %.1f с — E героя 2 для взаимодействия" % enemy.mark_time
+	if enemy.combo_time > 0:
+		status.text += "\nВзаимодействие! Метка израсходована · 60 урона"
 	if player.party_defeated():
 		status.text += "\nПоражение. R — повторить бой"
 	elif player.health <= 0:

@@ -24,6 +24,31 @@ var reserve_health := MAX_HEALTH
 var reserve_cooldown := 0.0
 var reserve_invulnerability := 0.0
 var body_material: StandardMaterial3D
+# Technical prototype: control/setup and close-range damage roles.
+var ability_cooldowns: Array[float] = [0.0, 0.0]
+
+func use_ability() -> bool:
+	if health <= 0 or attack_time > 0 or ability_cooldowns[active_character] > 0:
+		return false
+	ability_cooldowns[active_character] = 6.0
+	var reach := 6.0 if active_character == 0 else 2.4
+	for enemy in get_tree().get_nodes_in_group("enemies"):
+		if enemy.health <= 0 or not can_reach(enemy, reach):
+			continue
+		if active_character == 0:
+			enemy.apply_mark()
+		else:
+			enemy.receive_finisher()
+	return true
+
+func can_reach(enemy: Node3D, reach: float) -> bool:
+	var offset := enemy.global_position - global_position
+	if offset.length() > reach or absf(offset.y) > 1.4:
+		return false
+	if (-visual.global_basis.z).dot(offset.normalized()) < 0.35:
+		return false
+	var ray := PhysicsRayQueryParameters3D.create(global_position + Vector3.UP, enemy.global_position + Vector3.UP, 1)
+	return get_world_3d().direct_space_state.intersect_ray(ray).is_empty()
 
 func switch_character() -> bool:
 	if reserve_health <= 0:
@@ -118,11 +143,15 @@ func _unhandled_input(event: InputEvent) -> void:
 		start_attack()
 	if event.is_action_pressed("switch_character") and not event.is_echo():
 		switch_character()
+	if event.is_action_pressed("ability") and not event.is_echo() and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+		use_ability()
 	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
 		pivot.rotation.y -= event.relative.x * 0.003
 		spring.rotation.x = clampf(spring.rotation.x - event.relative.y * 0.003, -1.15, 0.65)
 
 func _physics_process(delta: float) -> void:
+	for i in range(ability_cooldowns.size()):
+		ability_cooldowns[i] = maxf(0.0, ability_cooldowns[i] - delta)
 	reserve_cooldown = maxf(0.0, reserve_cooldown - delta)
 	reserve_invulnerability = maxf(0.0, reserve_invulnerability - delta)
 	invulnerability = maxf(0.0, invulnerability - delta)
@@ -164,15 +193,8 @@ func start_attack() -> bool:
 	return true
 
 func resolve_attack() -> void:
-	var forward := -visual.global_basis.z
 	for enemy in get_tree().get_nodes_in_group("enemies"):
-		var offset: Vector3 = enemy.global_position - global_position
-		if offset.length() > 2.4 or absf(offset.y) > 1.4:
-			continue
-		if forward.dot(offset.normalized()) < 0.35:
-			continue
-		var ray := PhysicsRayQueryParameters3D.create(global_position + Vector3.UP, enemy.global_position + Vector3.UP, 1)
-		if get_world_3d().direct_space_state.intersect_ray(ray).is_empty():
+		if can_reach(enemy, 2.4):
 			enemy.take_damage(25)
 
 func take_damage(amount: int) -> void:
@@ -188,6 +210,7 @@ func take_damage(amount: int) -> void:
 		defeated.emit()
 
 func reset_combat() -> void:
+	ability_cooldowns.assign([0.0, 0.0])
 	active_character = 0
 	reserve_health = MAX_HEALTH
 	reserve_cooldown = 0
