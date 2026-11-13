@@ -39,6 +39,9 @@ func use_ability() -> bool:
 			enemy.apply_mark()
 		else:
 			enemy.receive_finisher()
+	for mechanism in get_tree().get_nodes_in_group("ability_mechanisms"):
+		if can_reach(mechanism, reach):
+			mechanism.activate(active_character)
 	return true
 
 func can_reach(enemy: Node3D, reach: float) -> bool:

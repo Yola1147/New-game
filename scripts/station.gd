@@ -1,7 +1,7 @@
 extends RefCounted
 
 # Greybox station only: all dimensions, materials and signs are temporary.
-# The sealed door is scenery for #8; the puzzle and Echo belong to later issues.
+# The local mechanism is a technical prototype, not a canonical magic rule.
 static func build(world: Node3D) -> void:
 	world.block(Vector3(0, -0.5, 0), Vector3(32, 1, 32), Color("526c68"))
 	for x in [-16.0, 16.0]:
@@ -20,8 +20,12 @@ static func build(world: Node3D) -> void:
 	# Rear room divider: a visibly sealed central door and a 3.5 m east bypass.
 	world.block(Vector3(-9.25, 2, -6), Vector3(12.5, 4, 0.8), Color("58647c"))
 	world.block(Vector3(11, 2, -6), Vector3(9, 4, 0.8), Color("58647c"))
-	world.block(Vector3(0, 1.75, -6), Vector3(6, 3.5, 0.8), Color("a77c57"))
+	var gate: StaticBody3D = world.block(Vector3(0, 1.75, -6), Vector3(6, 3.5, 0.8), Color("a77c57"))
 	world.block(Vector3(0, 3.75, -6), Vector3(6, 0.5, 0.8), Color("8997a8"))
+	world.puzzle = preload("res://scripts/puzzle.gd").new()
+	world.puzzle.gate = gate
+	world.puzzle.position = Vector3(-2, 0, -4.5)
+	world.add_child(world.puzzle)
 	# Flat colour strips are wayfinding, not magical effects or puzzle objects.
 	for z in [8.0, 5.0, 2.0, -1.0]:
 		world.block(Vector3(0, 0.015, z), Vector3(1.4, 0.03, 1), Color("c9be91"))
@@ -29,7 +33,7 @@ static func build(world: Node3D) -> void:
 		world.block(Vector3(4.75, 0.015, z), Vector3(1.4, 0.03, 1), Color("c9be91"))
 	world.block(Vector3(4, 0.025, -10), Vector3(3, 0.05, 3), Color("65cfc4"))
 	signpost(world, Vector3(0, 3.9, 11), "ВХОД · РУИНЫ СТАНЦИИ\nВременная геометрия")
-	signpost(world, Vector3(0, 2.8, -5.4), "ПРОХОД ЗАКРЫТ\nОбход справа →")
+	signpost(world, Vector3(0, 2.8, -5.4), "ПРОХОД · МЕХАНИЗМ СЛЕВА\nОбход справа →")
 	signpost(world, Vector3(4.75, 3, -6), "ОБХОД")
 	signpost(world, Vector3(4, 2.5, -10), "МЕСТО НАХОДКИ · ПРОТОТИП\nG — осмотреть после победы")
 
