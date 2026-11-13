@@ -1,6 +1,6 @@
 extends CanvasLayer
 
-# Prototype conversation, available anywhere on the test arena; no NPC or journal yet.
+# Prototype conversation, available anywhere on the test arena; no NPC yet.
 signal assignment_received
 const LINES: Array[String] = [
 	"Нужно исследовать заброшенную станцию недалеко от поселения.",

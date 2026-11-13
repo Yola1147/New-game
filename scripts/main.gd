@@ -3,6 +3,9 @@ extends Node3D
 const Player = preload("res://scripts/player.gd")
 const Enemy = preload("res://scripts/enemy.gd")
 const Dialogue = preload("res://scripts/dialogue.gd")
+const Quest = preload("res://scripts/quest.gd")
+const STATION_POINT := Vector3(4, 0, -10)
+var quest := Quest.new()
 var dialogue: CanvasLayer
 var assignment_status: Label
 var player: CharacterBody3D
@@ -35,6 +38,12 @@ func _ready() -> void:
 	for point in [Vector3(8, 1.5, -8), Vector3(8, 1.5, 3), Vector3(-10, 1.5, 5)]:
 		block(point, Vector3(2, 3, 2), Color("b3a5bd"))
 	block(Vector3(4, 0.1, -10), Vector3(4, 0.2, 4), Color("65cfc4"))
+	var marker := Label3D.new()
+	marker.position = STATION_POINT + Vector3.UP * 2.5
+	marker.text = "СТАНЦИЯ · МАРКЕР ПРОТОТИПА\nG — осмотреть рядом после победы"
+	marker.font_size = 36
+	marker.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	add_child(marker)
 	player = Player.new()
 	player.name = "Player"
 	player.position = Vector3(0, 2, 8)
@@ -60,15 +69,16 @@ func _ready() -> void:
 	status.add_theme_font_size_override("font_size", 24)
 	hud.add_child(status)
 	assignment_status = Label.new()
-	assignment_status.position = Vector2(18, 295)
+	var journal_panel := PanelContainer.new()
+	journal_panel.position = Vector2(18, 295)
+	hud.add_child(journal_panel)
 	assignment_status.add_theme_font_size_override("font_size", 20)
-	assignment_status.text = "F — разговор: поручение исследовать станцию (прототип)"
-	hud.add_child(assignment_status)
+	assignment_status.text = quest.journal_text()
+	journal_panel.add_child(assignment_status)
 	dialogue = Dialogue.new()
 	add_child(dialogue)
-	dialogue.assignment_received.connect(func() -> void:
-		assignment_status.text = "Поручение получено: исследовать заброшенную станцию. F — повторить диалог"
-	)
+	dialogue.assignment_received.connect(quest.accept)
+	quest.changed.connect(update_journal)
 	update_status()
 
 func configure_input() -> void:
@@ -77,7 +87,7 @@ func configure_input() -> void:
 		var click := InputEventMouseButton.new()
 		click.button_index = MOUSE_BUTTON_LEFT
 		InputMap.action_add_event("attack", click)
-	var bindings := {"move_forward": KEY_W, "move_back": KEY_S, "move_left": KEY_A, "move_right": KEY_D, "jump": KEY_SPACE, "release_mouse": KEY_ESCAPE, "reset": KEY_R, "switch_character": KEY_Q, "ability": KEY_E, "talk": KEY_F, "dialogue_next": KEY_ENTER}
+	var bindings := {"move_forward": KEY_W, "move_back": KEY_S, "move_left": KEY_A, "move_right": KEY_D, "jump": KEY_SPACE, "release_mouse": KEY_ESCAPE, "reset": KEY_R, "switch_character": KEY_Q, "ability": KEY_E, "talk": KEY_F, "dialogue_next": KEY_ENTER, "inspect_station": KEY_G, "reset_quest": KEY_T}
 	for action: String in bindings:
 		if not InputMap.has_action(action):
 			InputMap.add_action(action)
@@ -88,6 +98,15 @@ func configure_input() -> void:
 func _input(event: InputEvent) -> void:
 	if dialogue.active:
 		return
+	if event.is_echo():
+		return
+	if event.is_action_pressed("reset_quest"):
+		restart_quest()
+		get_viewport().set_input_as_handled()
+		return
+	if event.is_action_pressed("inspect_station"):
+		quest.inspect(player.health > 0, player.global_position.distance_to(STATION_POINT) <= 2.5, enemy.health <= 0)
+		get_viewport().set_input_as_handled()
 	if event.is_action_pressed("talk") and not event.is_echo() and player.health > 0:
 		dialogue.begin()
 		get_viewport().set_input_as_handled()
@@ -100,7 +119,18 @@ func restart_battle() -> void:
 	update_status()
 
 func _process(_delta: float) -> void:
+	quest.observe_guard(enemy.health <= 0)
 	update_status()
+
+func update_journal() -> void:
+	assignment_status.text = quest.journal_text()
+
+func restart_quest() -> void:
+	if dialogue.active:
+		return
+	dialogue.assignment_accepted = false
+	quest.reset()
+	restart_battle()
 
 func ability_status(index: int) -> String:
 	var hp: int = player.health if index == player.active_character else player.reserve_health
