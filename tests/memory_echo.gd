@@ -16,16 +16,28 @@ func run() -> void:
 	player.position = world.STATION_POINT
 	key(KEY_G)
 	check(not echo.active, "No recording before assignment and battle")
+	check(world.echo_status.text.contains("примите поручение"), "G explains missing assignment")
 	accept_dialogue()
 	key(KEY_G)
 	check(not echo.active, "Live guard blocks finding")
+	check(world.echo_status.text.contains("стража в зале"), "G explains live hall guard")
 	world.enemy.take_damage(100)
+	key(KEY_G)
+	check(not echo.active and world.echo_status.text.contains("механизм"), "G explains unsolved mechanism")
+	await capture("blocked-mechanism")
+	await create_timer(6.1).timeout
+	check(world.echo_status.text.is_empty() and world.quest.rewards == 0, "Failure notice expires without changing progress")
+	world.puzzle.activate(0)
+	world.puzzle.activate(1)
+	key(KEY_G)
+	check(not echo.active and world.echo_status.text.contains("усиленного стража"), "G explains missing reinforced victory")
 	clear_final_guard(world)
 	await process_frame
 	await process_frame
 	player.position = Vector3(0, 0, 8)
 	key(KEY_G)
 	check(not echo.active, "Remote interaction cannot play recording")
+	check(world.echo_status.text.contains("подойдите ближе"), "G explains distance without granting reward")
 	player.position = world.STATION_POINT + Vector3.UP * 5
 	key(KEY_G)
 	check(not echo.active, "Height limits interaction")
@@ -33,12 +45,14 @@ func run() -> void:
 	player.take_damage(100)
 	key(KEY_G)
 	check(not echo.active, "Dead hero cannot discover recording")
+	check(world.echo_status.text.contains("живого героя"), "G explains dead active hero")
 	key(KEY_Q)
 	key(KEY_G, true)
 	check(not echo.active, "Keyboard repeat cannot trigger recording")
 	var mouse_before := Input.mouse_mode
 	key(KEY_G)
 	check(echo.active and echo.panel.visible and echo.line_index == 0, "G discovers device and starts first line")
+	check(world.echo_status.text.is_empty(), "Successful G clears the failure notice")
 	check(world.quest.rewards == 1 and world.quest.stage == world.quest.Stage.COMPLETED, "Finding updates quest exactly once")
 	check(not paused and Input.mouse_mode == mouse_before, "Playback preserves pause and cursor state")
 	await capture("playback")

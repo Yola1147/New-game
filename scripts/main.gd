@@ -22,6 +22,8 @@ var final_enemy: CharacterBody3D
 var enemy: CharacterBody3D
 var status: Label
 var equipment_status: Label
+var echo_status: Label
+var echo_notice_time := 0.0
 
 func _ready() -> void:
 	configure_input()
@@ -62,6 +64,16 @@ func _ready() -> void:
 	route_hint.text = "Маршрут: вход → зал боя → механизм → усиленный страж → Эхо памяти · временные ассеты"
 	route_hint.add_theme_font_size_override("font_size", 18)
 	hud.add_child(route_hint)
+	echo_status = Label.new()
+	echo_status.position = Vector2(770, 18)
+	echo_status.size = Vector2(480, 110)
+	echo_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	echo_status.add_theme_font_size_override("font_size", 20)
+	echo_status.add_theme_color_override("font_shadow_color", Color.BLACK)
+	echo_status.add_theme_constant_override("shadow_offset_x", 2)
+	echo_status.add_theme_constant_override("shadow_offset_y", 2)
+	echo_status.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	hud.add_child(echo_status)
 	var label := Label.new()
 	label.text = "NEW GAME · Руины станции (прототип)\nWASD — движение • Мышь — камера • Пробел — прыжок\nЛКМ — удар • Q — смена героя • E — способность • Esc — курсор • R — новый бой\nГерой 1: метка с 6 м и замедление на 5 с → Q → Герой 2: удар с 2.4 м\nМетка + удар: 60 вместо 35 урона. Оранжевый страж готовит атаку."
 	label.add_theme_font_size_override("font_size", 18)
@@ -156,6 +168,8 @@ func _input(event: InputEvent) -> void:
 
 func restart_battle() -> void:
 	memory_echo.stop()
+	echo_notice_time = 0
+	echo_status.text = ""
 	player.reset_combat()
 	enemy.reset_combat()
 	if is_instance_valid(final_enemy):
@@ -167,11 +181,31 @@ func restart_battle() -> void:
 
 func inspect_memory() -> void:
 	advance_prologue()
-	if player.health <= 0 or player.global_position.distance_to(STATION_POINT) > 2.5 or not route_cleared():
+	var reason := memory_block_reason()
+	if not reason.is_empty():
+		echo_status.text = "Эхо памяти: " + reason
+		echo_notice_time = 6.0
 		return
+	echo_status.text = ""
+	echo_notice_time = 0
 	quest.inspect(true, true, true)
 	if quest.stage == Quest.Stage.COMPLETED:
 		memory_echo.play()
+
+func memory_block_reason() -> String:
+	if player.health <= 0:
+		return "выберите живого героя (Q) или повторите бой (R)."
+	if quest.stage == Quest.Stage.NOT_STARTED:
+		return "сначала примите поручение (F)."
+	if enemy.health > 0:
+		return "сначала победите стража в зале."
+	if not puzzle.opened:
+		return "откройте механизм слева от двери: E героя 1 → Q → E героя 2."
+	if not route_cleared():
+		return "сначала победите усиленного стража в дальней комнате."
+	if player.global_position.distance_to(STATION_POINT) > 2.5:
+		return "подойдите ближе к светлому предмету на бирюзовой площадке (до 2,5 м)."
+	return ""
 
 func route_cleared() -> bool:
 	return enemy.health <= 0 and puzzle.opened and is_instance_valid(final_enemy) and final_enemy.health <= 0
@@ -188,7 +222,11 @@ func advance_prologue() -> void:
 		final_enemy.health_changed.connect(update_status)
 	quest.observe_route(enemy.health <= 0, puzzle.opened, route_cleared())
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
+	if echo_notice_time > 0:
+		echo_notice_time = maxf(0, echo_notice_time - delta)
+		if echo_notice_time == 0:
+			echo_status.text = ""
 	advance_prologue()
 	update_status()
 
