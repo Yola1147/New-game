@@ -2,6 +2,9 @@ extends Node3D
 
 const Player = preload("res://scripts/player.gd")
 const Enemy = preload("res://scripts/enemy.gd")
+const Dialogue = preload("res://scripts/dialogue.gd")
+var dialogue: CanvasLayer
+var assignment_status: Label
 var player: CharacterBody3D
 var enemy: CharacterBody3D
 var status: Label
@@ -56,6 +59,16 @@ func _ready() -> void:
 	status.position = Vector2(18, 165)
 	status.add_theme_font_size_override("font_size", 24)
 	hud.add_child(status)
+	assignment_status = Label.new()
+	assignment_status.position = Vector2(18, 295)
+	assignment_status.add_theme_font_size_override("font_size", 20)
+	assignment_status.text = "F — разговор: поручение исследовать станцию (прототип)"
+	hud.add_child(assignment_status)
+	dialogue = Dialogue.new()
+	add_child(dialogue)
+	dialogue.assignment_received.connect(func() -> void:
+		assignment_status.text = "Поручение получено: исследовать заброшенную станцию. F — повторить диалог"
+	)
 	update_status()
 
 func configure_input() -> void:
@@ -64,7 +77,7 @@ func configure_input() -> void:
 		var click := InputEventMouseButton.new()
 		click.button_index = MOUSE_BUTTON_LEFT
 		InputMap.action_add_event("attack", click)
-	var bindings := {"move_forward": KEY_W, "move_back": KEY_S, "move_left": KEY_A, "move_right": KEY_D, "jump": KEY_SPACE, "release_mouse": KEY_ESCAPE, "reset": KEY_R, "switch_character": KEY_Q, "ability": KEY_E}
+	var bindings := {"move_forward": KEY_W, "move_back": KEY_S, "move_left": KEY_A, "move_right": KEY_D, "jump": KEY_SPACE, "release_mouse": KEY_ESCAPE, "reset": KEY_R, "switch_character": KEY_Q, "ability": KEY_E, "talk": KEY_F, "dialogue_next": KEY_ENTER}
 	for action: String in bindings:
 		if not InputMap.has_action(action):
 			InputMap.add_action(action)
@@ -73,6 +86,11 @@ func configure_input() -> void:
 		InputMap.action_add_event(action, event)
 
 func _input(event: InputEvent) -> void:
+	if dialogue.active:
+		return
+	if event.is_action_pressed("talk") and not event.is_echo() and player.health > 0:
+		dialogue.begin()
+		get_viewport().set_input_as_handled()
 	if event.is_action_pressed("reset"):
 		restart_battle()
 
