@@ -13,6 +13,7 @@ var puzzle_panel: PanelContainer
 var puzzle_status: Label
 var assignment_status: Label
 var player: CharacterBody3D
+var final_enemy: CharacterBody3D
 var enemy: CharacterBody3D
 var status: Label
 
@@ -52,7 +53,7 @@ func _ready() -> void:
 	hud.add_child(panel)
 	var route_hint := Label.new()
 	route_hint.position = Vector2(18, 660)
-	route_hint.text = "Маршрут: вход → зал боя → механизм у прохода → находка (или обход справа) · временные ассеты"
+	route_hint.text = "Маршрут: вход → зал боя → механизм → усиленный страж → Эхо памяти · временные ассеты"
 	route_hint.add_theme_font_size_override("font_size", 18)
 	hud.add_child(route_hint)
 	var label := Label.new()
@@ -121,17 +122,38 @@ func restart_battle() -> void:
 	memory_echo.stop()
 	player.reset_combat()
 	enemy.reset_combat()
+	if is_instance_valid(final_enemy):
+		remove_child(final_enemy)
+		final_enemy.queue_free()
+		final_enemy = null
+	advance_prologue()
 	update_status()
 
 func inspect_memory() -> void:
-	if player.health <= 0 or player.global_position.distance_to(STATION_POINT) > 2.5 or enemy.health > 0:
+	advance_prologue()
+	if player.health <= 0 or player.global_position.distance_to(STATION_POINT) > 2.5 or not route_cleared():
 		return
 	quest.inspect(true, true, true)
 	if quest.stage == Quest.Stage.COMPLETED:
 		memory_echo.play()
 
+func route_cleared() -> bool:
+	return enemy.health <= 0 and puzzle.opened and is_instance_valid(final_enemy) and final_enemy.health <= 0
+
+func advance_prologue() -> void:
+	if enemy.health <= 0 and puzzle.opened and not is_instance_valid(final_enemy):
+		final_enemy = Enemy.new()
+		final_enemy.name = "ReinforcedGuard"
+		final_enemy.reinforced = true
+		final_enemy.home = Vector3(0, 1, -11)
+		final_enemy.position = final_enemy.home
+		final_enemy.target = player
+		add_child(final_enemy)
+		final_enemy.health_changed.connect(update_status)
+	quest.observe_route(enemy.health <= 0, puzzle.opened, route_cleared())
+
 func _process(_delta: float) -> void:
-	quest.observe_guard(enemy.health <= 0)
+	advance_prologue()
 	update_status()
 
 func update_journal() -> void:
@@ -142,8 +164,8 @@ func restart_quest() -> void:
 		return
 	dialogue.assignment_accepted = false
 	quest.reset()
-	restart_battle()
 	puzzle.reset_puzzle()
+	restart_battle()
 
 func ability_status(index: int) -> String:
 	var hp: int = player.health if index == player.active_character else player.reserve_health
@@ -162,17 +184,26 @@ func update_status() -> void:
 	puzzle_panel.visible = player.global_position.distance_to(puzzle.global_position) < 8
 	puzzle_status.text = puzzle.hint_text()
 	status.text = "Герой %d: %d / 100    Резерв: %d / 100    Страж: %d / 100" % [player.active_character + 1, player.health, player.reserve_health, enemy.health]
+	if is_instance_valid(final_enemy):
+		status.text += "\nУсиленный страж: %d / %d · урон 30 · замах 0,65 с" % [final_enemy.health, final_enemy.max_health]
 	status.text += "\n1 · Метка: %s    2 · Сильный удар: %s" % [ability_status(0), ability_status(1)]
-	if enemy.mark_time > 0:
-		status.text += "\nСтраж замедлен · Метка: %.1f с — E героя 2 для взаимодействия" % enemy.mark_time
-	if enemy.combo_time > 0:
+	var combat_enemy = final_enemy if is_instance_valid(final_enemy) else enemy
+	if combat_enemy.mark_time > 0:
+		status.text += "\nСтраж замедлен · Метка: %.1f с — E героя 2 для взаимодействия" % combat_enemy.mark_time
+	if combat_enemy.combo_time > 0:
 		status.text += "\nВзаимодействие! Метка израсходована · 60 урона"
 	if player.party_defeated():
 		status.text += "\nПоражение. R — повторить бой"
 	elif player.health <= 0:
 		status.text += "\nГерой погиб. Q — выбрать живого героя; R — новый бой"
-	elif enemy.health <= 0:
-		status.text += "\nПобеда! R — повторить бой"
+	elif route_cleared() and quest.stage == Quest.Stage.COMPLETED:
+		status.text += "\nПролог завершён · G рядом с Эхом — повтор записи"
+	elif route_cleared():
+		status.text += "\nПобеда! G у Эха памяти — завершить поручение"
+	elif enemy.health <= 0 and not puzzle.opened:
+		status.text += "\nПобеда в зале! Откройте проход: E → Q → E у механизма"
+	elif is_instance_valid(final_enemy) and final_enemy.health > 0:
+		status.text += "\nУсиленный страж в дальней комнате · R — повторить бой"
 
 func block(at: Vector3, size: Vector3, color: Color) -> StaticBody3D:
 	var body := StaticBody3D.new()

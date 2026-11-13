@@ -45,7 +45,7 @@ static func build(world: Node3D) -> void:
 	signpost(world, Vector3(0, 3.9, 11), "ВХОД · РУИНЫ СТАНЦИИ\nВременная геометрия")
 	signpost(world, Vector3(0, 2.8, -5.4), "ПРОХОД · МЕХАНИЗМ СЛЕВА\nОбход справа →")
 	signpost(world, Vector3(4.75, 3, -6), "ОБХОД")
-	signpost(world, Vector3(4, 2.5, -10), "ЭХО ПАМЯТИ · ПРОТОТИП\nG — запись после победы и поручения")
+	signpost(world, Vector3(4, 2.5, -10), "ЭХО ПАМЯТИ · ПРОТОТИП\nG — после механизма, двух побед и поручения")
 
 static func signpost(world: Node3D, at: Vector3, text: String) -> void:
 	var label := Label3D.new()

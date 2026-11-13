@@ -2,6 +2,12 @@ extends "res://tests/puzzle.gd"
 
 # Integrated automated route. No teleporting, forced damage or disabled AI.
 # This does not replace a user's manual playthrough.
+func finale_snapshot(view: String) -> void:
+	if "--capture" in OS.get_cmdline_user_args() and DisplayServer.get_name() != "headless":
+		await process_frame
+		await RenderingServer.frame_post_draw
+		root.get_texture().get_image().save_png("res://.tools/issue12-%s.png" % view)
+
 func run() -> void:
 	var world = load("res://scenes/main.tscn").instantiate()
 	root.add_child(world)
@@ -24,7 +30,7 @@ func run() -> void:
 		check(player.start_attack(), "Hall fight accepts basic attack")
 		await frames(35)
 	check(world.enemy.health == 0 and player.health > 0, "Live AI fight ends in victory")
-	check(world.quest.stage == world.quest.Stage.INSPECT_STATION, "Victory advances accepted assignment")
+	check(world.quest.stage == world.quest.Stage.OPEN_PASSAGE, "Victory advances accepted assignment")
 	await walk(player, Vector3(0, 0, -3))
 	Input.action_press("move_forward")
 	await frames(90)
@@ -46,8 +52,18 @@ func run() -> void:
 	await frames(2)
 	check(world.puzzle.opened, "Two abilities open passage after battle")
 	await walk(player, Vector3(-2, 0, -9))
+	await frames(100)
+	await finale_snapshot("reinforced")
+	for i in range(7):
+		if player.health <= 30 and player.reserve_health > 0:
+			player.switch_character()
+		player.visual.look_at(Vector3(world.final_enemy.position.x, player.visual.global_position.y, world.final_enemy.position.z))
+		check(player.start_attack(), "Final fight accepts basic attack")
+		await frames(35)
+	check(world.final_enemy.health == 0 and player.health > 0, "Reinforced guard is beatable with live AI")
 	await walk(player, world.STATION_POINT)
 	key(KEY_G)
+	await finale_snapshot("completed")
 	check(world.memory_echo.active and world.quest.rewards == 1, "Walked route discovers recording once")
 	key(KEY_G)
 	await walk(player, Vector3(4.75, 0, -10))

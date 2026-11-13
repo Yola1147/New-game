@@ -2,6 +2,10 @@ extends CharacterBody3D
 
 signal health_changed
 const MAX_HEALTH := 100
+# Tunable prototype variant; both guards use the same AI and attack timing.
+var reinforced := false
+var max_health := MAX_HEALTH
+var attack_damage := 20
 var health := MAX_HEALTH
 var target: CharacterBody3D
 var windup := 0.0
@@ -99,6 +103,10 @@ func clear_pursuit() -> void:
 	repath_time = 0
 
 func _ready() -> void:
+	if reinforced:
+		max_health = 175
+		attack_damage = 30
+		health = max_health
 	add_to_group("enemies")
 	collision_layer = 4
 	collision_mask = 1
@@ -116,9 +124,24 @@ func _ready() -> void:
 	mesh.mesh = capsule
 	mesh.position.y = 0.8
 	material = StandardMaterial3D.new()
-	material.albedo_color = Color("ca6478")
+	material.albedo_color = Color("9e79d6" if reinforced else "ca6478")
 	mesh.material_override = material
 	add_child(mesh)
+	if reinforced:
+		# Broad shoulder bar and persistent name distinguish it even in windup.
+		var shoulders := MeshInstance3D.new()
+		var bar := BoxMesh.new()
+		bar.size = Vector3(1.5, 0.25, 0.65)
+		shoulders.mesh = bar
+		shoulders.position.y = 1.3
+		shoulders.material_override = material
+		add_child(shoulders)
+		var title := Label3D.new()
+		title.text = "УСИЛЕННЫЙ СТРАЖ · ПРОТОТИП"
+		title.position.y = 2.25
+		title.font_size = 26
+		title.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+		add_child(title)
 	mark_visual = MeshInstance3D.new()
 	var ring := TorusMesh.new()
 	ring.inner_radius = 0.65
@@ -151,7 +174,7 @@ func _physics_process(delta: float) -> void:
 				if offset.length() < 2.1 and attack_direction.dot(offset.normalized()) > 0.5:
 					var ray := PhysicsRayQueryParameters3D.create(global_position + Vector3.UP, target.global_position + Vector3.UP, 1)
 					if get_world_3d().direct_space_state.intersect_ray(ray).is_empty():
-						target.take_damage(20)
+						target.take_damage(attack_damage)
 				cooldown = 1.0
 		elif offset.length() < 1.8 and cooldown == 0:
 			windup = 0.65
@@ -165,7 +188,7 @@ func _physics_process(delta: float) -> void:
 			clear_pursuit()
 	else:
 		clear_pursuit()
-	material.albedo_color = Color("ffbe62") if windup > 0 else Color("ca6478")
+	material.albedo_color = Color("ffbe62") if windup > 0 else Color("9e79d6" if reinforced else "ca6478")
 	move_and_slide()
 	if position.y < -12:
 		position = home
@@ -188,7 +211,7 @@ func reset_combat() -> void:
 	combo_time = 0
 	mark_visual.visible = false
 	clear_pursuit()
-	health = MAX_HEALTH
+	health = max_health
 	windup = 0
 	cooldown = 0
 	velocity = Vector3.ZERO

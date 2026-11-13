@@ -20,6 +20,7 @@ func run() -> void:
 	key(KEY_G)
 	check(not echo.active, "Live guard blocks finding")
 	world.enemy.take_damage(100)
+	clear_final_guard(world)
 	await process_frame
 	await process_frame
 	player.position = Vector3(0, 0, 8)
@@ -78,6 +79,7 @@ func run() -> void:
 	key(KEY_R)
 	check(not echo.active and world.quest.rewards == 1, "R stops playback and preserves finding")
 	world.enemy.take_damage(100)
+	clear_final_guard(world)
 	player.position = world.STATION_POINT
 	key(KEY_G)
 	key(KEY_T)
@@ -85,6 +87,7 @@ func run() -> void:
 	# Repeat after full reset and verify the finding can be awarded once again.
 	accept_dialogue()
 	world.enemy.take_damage(100)
+	clear_final_guard(world)
 	await process_frame
 	await process_frame
 	player.position = world.STATION_POINT
