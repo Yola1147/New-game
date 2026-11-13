@@ -34,6 +34,6 @@ powershell -ExecutionPolicy Bypass -File .\Run.ps1 -Test
 
 Документы: GAME_DESIGN.md содержит утверждённый канон и авторские спойлеры; ROADMAP.md — критерии этапов; AGENTS.md — правила работы. Лицензия исходников и документации — MIT (LICENSE).
 
-Работа запланирована в [17 GitHub issues](https://github.com/Yola1147/New-game/issues) и [6 milestones](https://github.com/Yola1147/New-game/milestones), от доводки боя до проверенного Windows-среза. Критерии готовности и зависимости находятся в задачах; сводка — в ROADMAP.md. Следующая задача: [#1 — обход препятствий одним врагом](https://github.com/Yola1147/New-game/issues/1), затем ручная доводка боя #2.
+Текущий этап — прототип M2a; активная целевая версия — **v0.2.0**, доведённый бой. Работа разделена на [6 версионных milestones](https://github.com/Yola1147/New-game/milestones): 17 задач реализации и 6 задач приёмки. После v0.5.0 проект переходит в пре-альфу, после v0.7.0 готов проверенный вертикальный срез. Это будущие цели; опубликованных версий этим планом не объявляется. Правила переходов и таблица версий — в [VERSIONING.md](VERSIONING.md), критерии задач — в [GitHub issues](https://github.com/Yola1147/New-game/issues). Следующая задача: [#1 — обход препятствий одним врагом](https://github.com/Yola1147/New-game/issues/1), затем ручная доводка боя #2 и приёмка #18.
 
 Локальный Git-репозиторий находится в папке New game; закрытый удалённый репозиторий: https://github.com/Yola1147/New-game (ветка main). .tools и .godot не публикуются.
