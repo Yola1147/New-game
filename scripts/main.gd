@@ -8,6 +8,7 @@ const STATION_POINT := Vector3(4, 0, -10)
 var puzzle: Node3D
 var quest := Quest.new()
 var dialogue: CanvasLayer
+var memory_echo: CanvasLayer
 var puzzle_panel: PanelContainer
 var puzzle_status: Label
 var assignment_status: Label
@@ -78,6 +79,8 @@ func _ready() -> void:
 	dialogue = Dialogue.new()
 	add_child(dialogue)
 	dialogue.assignment_received.connect(quest.accept)
+	memory_echo = preload("res://scripts/memory_echo.gd").new()
+	add_child(memory_echo)
 	quest.changed.connect(update_journal)
 	update_status()
 
@@ -105,18 +108,27 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 		return
 	if event.is_action_pressed("inspect_station"):
-		quest.inspect(player.health > 0, player.global_position.distance_to(STATION_POINT) <= 2.5, enemy.health <= 0)
+		inspect_memory()
 		get_viewport().set_input_as_handled()
 	if event.is_action_pressed("talk") and not event.is_echo() and player.health > 0:
+		memory_echo.stop()
 		dialogue.begin()
 		get_viewport().set_input_as_handled()
 	if event.is_action_pressed("reset"):
 		restart_battle()
 
 func restart_battle() -> void:
+	memory_echo.stop()
 	player.reset_combat()
 	enemy.reset_combat()
 	update_status()
+
+func inspect_memory() -> void:
+	if player.health <= 0 or player.global_position.distance_to(STATION_POINT) > 2.5 or enemy.health > 0:
+		return
+	quest.inspect(true, true, true)
+	if quest.stage == Quest.Stage.COMPLETED:
+		memory_echo.play()
 
 func _process(_delta: float) -> void:
 	quest.observe_guard(enemy.health <= 0)
