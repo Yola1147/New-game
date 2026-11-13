@@ -4,6 +4,11 @@ const Player = preload("res://scripts/player.gd")
 const Enemy = preload("res://scripts/enemy.gd")
 const Dialogue = preload("res://scripts/dialogue.gd")
 const Quest = preload("res://scripts/quest.gd")
+const SaveGame = preload("res://scripts/save_game.gd")
+# Script-driven regressions opt in explicitly and use their own slot.
+var persistence_enabled := not "--script" in OS.get_cmdline_args()
+var save_path := SaveGame.PATH
+var save_status: Label
 const STATION_POINT := Vector3(4, 0, -10)
 var puzzle: Node3D
 var quest := Quest.new()
@@ -91,6 +96,13 @@ func _ready() -> void:
 	add_child(memory_echo)
 	quest.changed.connect(update_journal)
 	update_status()
+	save_status = Label.new()
+	save_status.position = Vector2(18, 690)
+	save_status.add_theme_font_size_override("font_size", 16)
+	hud.add_child(save_status)
+	save_status.text = "F5 — сохранить у входа · F9 — загрузить · T — новая игра (удалить слот)"
+	if persistence_enabled:
+		load_checkpoint()
 
 func configure_input() -> void:
 	if not InputMap.has_action("toggle_equipment"):
@@ -115,6 +127,13 @@ func _input(event: InputEvent) -> void:
 	if dialogue.active:
 		return
 	if event.is_echo():
+		return
+	if event is InputEventKey and event.pressed and event.physical_keycode in [KEY_F5, KEY_F9]:
+		if event.physical_keycode == KEY_F5:
+			save_checkpoint()
+		else:
+			load_checkpoint()
+		get_viewport().set_input_as_handled()
 		return
 	if event.is_action_pressed("toggle_equipment"):
 		player.toggle_equipment()
@@ -187,10 +206,72 @@ func update_journal() -> void:
 func restart_quest() -> void:
 	if dialogue.active:
 		return
+	if persistence_enabled and not SaveGame.clear_slot(save_path):
+		save_status.text = "Не удалось удалить сохранение. Новая игра отменена."
+		return
 	dialogue.assignment_accepted = false
 	quest.reset()
 	puzzle.reset_puzzle()
 	restart_battle()
+	if is_instance_valid(save_status):
+		save_status.text = "Новая игра · слот очищен · F5 — сохранить у входа · F9 — загрузить"
+
+func checkpoint_data() -> Dictionary:
+	advance_prologue()
+	return {"version": SaveGame.VERSION, "active": player.active_character,
+		"hp": player.health, "reserve_hp": player.reserve_health,
+		"stage": quest.stage, "rewards": quest.rewards,
+		"guard": enemy.health <= 0, "door": puzzle.opened,
+		"final_guard": route_cleared(), "owned": player.blade_owned,
+		"equipped": player.blade_equipped}
+
+func save_checkpoint() -> bool:
+	if dialogue.active or player.health <= 0 or player.attack_time > 0 or player.global_position.distance_to(Vector3(0, 0, 8)) > 3:
+		save_status.text = "Сохранение: вернитесь живым героем ко входу (0, 8), вне атаки."
+		return false
+	# A pursuing guard must not turn the entrance into a combat save point.
+	for guard in get_tree().get_nodes_in_group("enemies"):
+		if guard.health > 0 and guard.global_position.distance_to(player.global_position) < 11.5:
+			save_status.text = "Сохранение недоступно: рядом страж. R возвращает бой к началу."
+			return false
+	var saved := SaveGame.write_slot(checkpoint_data(), save_path)
+	save_status.text = "Сохранено · F9 — загрузить · T — новая игра" if saved else "Ошибка записи: прежний слот сохранён."
+	return saved
+
+func load_checkpoint() -> bool:
+	if dialogue.active:
+		return false
+	var data := SaveGame.read_slot(save_path)
+	if data.is_empty():
+		save_status.text = "Нет корректного слота · F5 — сохранить у входа · F9 — загрузить · T — новая игра"
+		return false
+	# Validate everything before changing the live scene. Never replay reward signals.
+	memory_echo.stop()
+	quest.stage = Quest.Stage.NOT_STARTED
+	quest.rewards = 0
+	puzzle.reset_puzzle()
+	restart_battle()
+	puzzle.opened = data.door
+	puzzle.set_gate_open(puzzle.opened)
+	puzzle.update_hint()
+	if data.guard:
+		enemy.take_damage(enemy.max_health)
+	advance_prologue()
+	if data.final_guard:
+		final_enemy.take_damage(final_enemy.max_health)
+	player.active_character = int(data.active)
+	player.health = int(data.hp)
+	player.reserve_health = int(data.reserve_hp)
+	player.body_material.albedo_color = Color("67d9cf") if player.active_character == 0 else Color("b99aea")
+	player.blade_owned = data.owned
+	player.blade_equipped = data.equipped
+	quest.stage = int(data.stage)
+	quest.rewards = int(data.rewards)
+	dialogue.assignment_accepted = quest.stage != Quest.Stage.NOT_STARTED
+	advance_prologue()
+	update_journal()
+	save_status.text = "Загружено у входа · F5 — сохранить · T — новая игра"
+	return true
 
 func ability_status(index: int) -> String:
 	var hp: int = player.health if index == player.active_character else player.reserve_health
