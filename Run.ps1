@@ -6,7 +6,7 @@ if (-not $engine) { throw 'Godot missing: install Godot 4.x or open project.godo
 $env:APPDATA = Join-Path $PSScriptRoot '.tools/profile'
 $env:LOCALAPPDATA = $env:APPDATA
 if ($Test) {
-    foreach ($suite in @('tests/smoke.gd', 'tests/combat.gd', 'tests/navigation.gd', 'tests/party.gd', 'tests/abilities.gd', 'tests/team_combat.gd', 'tests/dialogue.gd', 'tests/quest.gd')) {
+    foreach ($suite in @('tests/smoke.gd', 'tests/combat.gd', 'tests/navigation.gd', 'tests/party.gd', 'tests/abilities.gd', 'tests/team_combat.gd', 'tests/dialogue.gd', 'tests/quest.gd', 'tests/station.gd')) {
         & $engine.FullName --headless --path $PSScriptRoot --script $suite
         if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
     }

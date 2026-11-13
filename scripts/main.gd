@@ -28,28 +28,14 @@ func _ready() -> void:
 	sun.light_energy = 1.2
 	sun.shadow_enabled = true
 	add_child(sun)
-	block(Vector3(0, -0.5, 0), Vector3(32, 1, 32), Color("526c68"))
-	for x in [-16.0, 16.0]:
-		block(Vector3(x, 1.5, 0), Vector3(1, 4, 33), Color("58647c"))
-	for z in [-16.0, 16.0]:
-		block(Vector3(0, 1.5, z), Vector3(32, 4, 1), Color("58647c"))
-	for i in range(4):
-		block(Vector3(-8 + i * 2.8, 0.3 + i * 0.3, -4), Vector3(2.4, 0.6 + i * 0.6, 3), Color("8997a8"))
-	for point in [Vector3(8, 1.5, -8), Vector3(8, 1.5, 3), Vector3(-10, 1.5, 5)]:
-		block(point, Vector3(2, 3, 2), Color("b3a5bd"))
-	block(Vector3(4, 0.1, -10), Vector3(4, 0.2, 4), Color("65cfc4"))
-	var marker := Label3D.new()
-	marker.position = STATION_POINT + Vector3.UP * 2.5
-	marker.text = "СТАНЦИЯ · МАРКЕР ПРОТОТИПА\nG — осмотреть рядом после победы"
-	marker.font_size = 36
-	marker.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	add_child(marker)
+	preload("res://scripts/station.gd").build(self)
 	player = Player.new()
 	player.name = "Player"
 	player.position = Vector3(0, 2, 8)
 	add_child(player)
 	enemy = Enemy.new()
-	enemy.position = Vector3(0, 1, -10)
+	enemy.home = Vector3(0, 1, -4)
+	enemy.position = enemy.home
 	enemy.target = player
 	add_child(enemy)
 	player.health_changed.connect(update_status)
@@ -60,8 +46,13 @@ func _ready() -> void:
 	var panel := PanelContainer.new()
 	panel.position = Vector2(18, 18)
 	hud.add_child(panel)
+	var route_hint := Label.new()
+	route_hint.position = Vector2(18, 660)
+	route_hint.text = "Маршрут: вход → зал боя → закрытый проход → обход справа → место находки · временные ассеты"
+	route_hint.add_theme_font_size_override("font_size", 18)
+	hud.add_child(route_hint)
 	var label := Label.new()
-	label.text = "NEW GAME · Боевая арена (прототип)\nWASD — движение • Мышь — камера • Пробел — прыжок\nЛКМ — удар • Q — смена героя • E — способность • Esc — курсор • R — новый бой\nГерой 1: метка с 6 м и замедление на 5 с → Q → Герой 2: удар с 2.4 м\nМетка + удар: 60 вместо 35 урона. Оранжевый страж готовит атаку."
+	label.text = "NEW GAME · Руины станции (прототип)\nWASD — движение • Мышь — камера • Пробел — прыжок\nЛКМ — удар • Q — смена героя • E — способность • Esc — курсор • R — новый бой\nГерой 1: метка с 6 м и замедление на 5 с → Q → Герой 2: удар с 2.4 м\nМетка + удар: 60 вместо 35 урона. Оранжевый страж готовит атаку."
 	label.add_theme_font_size_override("font_size", 18)
 	panel.add_child(label)
 	status = Label.new()
@@ -70,7 +61,7 @@ func _ready() -> void:
 	hud.add_child(status)
 	assignment_status = Label.new()
 	var journal_panel := PanelContainer.new()
-	journal_panel.position = Vector2(18, 295)
+	journal_panel.position = Vector2(18, 545)
 	hud.add_child(journal_panel)
 	assignment_status.add_theme_font_size_override("font_size", 20)
 	assignment_status.text = quest.journal_text()
