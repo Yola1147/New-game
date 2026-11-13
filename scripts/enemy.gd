@@ -31,6 +31,29 @@ func build_navigation() -> void:
 			navigation.set_point_solid(Vector2i(x, z), not get_world_3d().direct_space_state.intersect_shape(query, 1).is_empty())
 	navigation_ready = true
 
+func navigation_cell(at: Vector3) -> Vector2i:
+	var cell := Vector2i(roundi(at.x * 2), roundi(at.z * 2))
+	if navigation.is_in_boundsv(cell) and not navigation.is_point_solid(cell):
+		return cell
+	# A capsule can stand closer to a column than the conservative grid permits.
+	# Project only locally, with line of sight, so enclosed targets stay unreachable.
+	var best := Vector2i(10000, 10000)
+	var distance := 0.9
+	for x in range(cell.x - 2, cell.x + 3):
+		for z in range(cell.y - 2, cell.y + 3):
+			var candidate := Vector2i(x, z)
+			if not navigation.is_in_boundsv(candidate) or navigation.is_point_solid(candidate):
+				continue
+			var point := Vector3(x * 0.5, at.y, z * 0.5)
+			var separation := at.distance_to(point)
+			if separation >= distance:
+				continue
+			var ray := PhysicsRayQueryParameters3D.create(at + Vector3.UP * 0.8, point + Vector3.UP * 0.8, 1)
+			if get_world_3d().direct_space_state.intersect_ray(ray).is_empty():
+				best = candidate
+				distance = separation
+	return best
+
 func pursuit_direction(delta: float) -> Vector3:
 	if not navigation_ready:
 		build_navigation()
@@ -38,13 +61,13 @@ func pursuit_direction(delta: float) -> Vector3:
 	if repath_time <= 0:
 		repath_time = 0.4
 		route.clear()
-		var start := Vector2i(roundi(global_position.x * 2), roundi(global_position.z * 2))
-		var goal := Vector2i(roundi(target.global_position.x * 2), roundi(target.global_position.z * 2))
+		var start := navigation_cell(global_position)
+		var goal := navigation_cell(target.global_position)
 		if absf(target.global_position.y) < 0.7 and navigation.is_in_boundsv(start) and navigation.is_in_boundsv(goal):
 			if not navigation.is_point_solid(start) and not navigation.is_point_solid(goal):
 				for point in navigation.get_point_path(start, goal):
 					route.append(Vector3(point.x, 0, point.y))
-				if not route.is_empty():
+				if not route.is_empty() and Vector2(global_position.x, global_position.z).distance_to(Vector2(start) * 0.5) < 0.36:
 					route.remove_at(0)
 	while not route.is_empty():
 		var offset := route[0] - Vector3(global_position.x, 0, global_position.z)

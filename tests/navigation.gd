@@ -31,6 +31,16 @@ func run() -> void:
 					arena.enemy.position.x = 11.5 if side == -1 else 1.0
 				await frames(420)
 				check(arena.enemy.position.distance_to(arena.player.position) < 2.1, "Enemy must navigate around column from each side")
+	# Regression: hero and enemy pressed against opposite faces of a column.
+	for axis in [Vector3.RIGHT, Vector3.FORWARD]:
+		for side in [-1, 1]:
+			arena.restart_battle()
+			var center := Vector3(8, 0, 3)
+			arena.player.position = center + axis * 1.51 * side
+			arena.enemy.position = center - axis * 1.51 * side
+			await frames(300)
+			check(arena.enemy.position.distance_to(arena.player.position) < 2.1, "Enemy must pursue a hero touching a column")
+			check(arena.player.health < 100, "Enemy must reach the same side and attack, not stop across the column")
 	arena.restart_battle()
 	arena.player.position = Vector3(0, 0, 8)
 	arena.enemy.position = Vector3(0, 0, 0)
