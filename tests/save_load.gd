@@ -36,6 +36,44 @@ func run() -> void:
 	world.player.reserve_health = 41
 	key(KEY_F5)
 	check(not Store.read_slot(SLOT).is_empty(), "F5 saves at entrance")
+	world.player.position = Vector3(0, 0, 11.2)
+	check(not world.save_checkpoint() and world.save_status.text.begins_with("НЕ СОХРАНЕНО:"), "Entrance arch outside checkpoint gives explicit rejection")
+	check("жёлтый круг" in world.save_status.text and Store.read_slot(SLOT).hp == 72, "Rejected entrance save points to marked zone and preserves slot")
+	await process_frame
+	await process_frame
+	check(world.save_button.disabled and "жёлтый круг" in world.save_hint.text, "Readiness hint explains unavailable save before pressing F5")
+	world.player.position = Vector3(0, 0, 8)
+	world.player.health = 71
+	var logical_key := InputEventKey.new()
+	logical_key.keycode = KEY_F5
+	logical_key.pressed = true
+	Input.parse_input_event(logical_key)
+	Input.flush_buffered_events()
+	logical_key = logical_key.duplicate()
+	logical_key.pressed = false
+	Input.parse_input_event(logical_key)
+	Input.flush_buffered_events()
+	check(Store.read_slot(SLOT).hp == 71 and world.save_status.text.begins_with("Сохранено"), "Logical F5 without physical code saves and visibly confirms")
+	world.player.health = 72
+	await process_frame
+	await process_frame
+	check(not world.save_button.disabled, "Save button enables inside marked checkpoint")
+	if DisplayServer.get_name() == "headless":
+		world.save_button.pressed.emit()
+	else:
+		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		var click := InputEventMouseButton.new()
+		click.position = world.save_button.get_global_rect().get_center()
+		click.button_index = MOUSE_BUTTON_LEFT
+		click.pressed = true
+		Input.parse_input_event(click)
+		Input.flush_buffered_events()
+		click = click.duplicate()
+		click.pressed = false
+		Input.parse_input_event(click)
+		Input.flush_buffered_events()
+		check(player_input_idle(world), "Save button click must not capture cursor or start combat")
+	check(Store.read_slot(SLOT).hp == 72, "Save button callback persists the current state")
 	world.player.position = world.STATION_POINT
 	check(not world.save_checkpoint(), "Cannot save outside checkpoint")
 	check(Store.read_slot(SLOT).hp == 72, "Rejected save preserves previous slot")
@@ -115,3 +153,6 @@ func run() -> void:
 		root.get_texture().get_image().save_png("res://.tools/issue14-checkpoint.png")
 	print("SAVE LOAD RESULT: ", failures, " failures")
 	quit(1 if failures else 0)
+
+func player_input_idle(world: Node3D) -> bool:
+	return world.player.attack_time == 0 and Input.mouse_mode == Input.MOUSE_MODE_VISIBLE
