@@ -7,6 +7,7 @@ $env:APPDATA = Join-Path $PSScriptRoot '.tools/profile'
 $env:LOCALAPPDATA = $env:APPDATA
 $output = Join-Path $PSScriptRoot 'build/windows'
 New-Item -ItemType Directory -Force -Path $output | Out-Null
+[IO.File]::WriteAllText((Join-Path $PSScriptRoot 'build/.gdignore'), '')
 & $engine.FullName --headless --path $PSScriptRoot --editor --import
 if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 & $engine.FullName --headless --path $PSScriptRoot --export-release 'Windows Desktop' (Join-Path $output 'New game.exe')
