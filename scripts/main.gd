@@ -5,8 +5,11 @@ const Enemy = preload("res://scripts/enemy.gd")
 const Dialogue = preload("res://scripts/dialogue.gd")
 const Quest = preload("res://scripts/quest.gd")
 const STATION_POINT := Vector3(4, 0, -10)
+var puzzle: Node3D
 var quest := Quest.new()
 var dialogue: CanvasLayer
+var puzzle_panel: PanelContainer
+var puzzle_status: Label
 var assignment_status: Label
 var player: CharacterBody3D
 var enemy: CharacterBody3D
@@ -48,7 +51,7 @@ func _ready() -> void:
 	hud.add_child(panel)
 	var route_hint := Label.new()
 	route_hint.position = Vector2(18, 660)
-	route_hint.text = "Маршрут: вход → зал боя → закрытый проход → обход справа → место находки · временные ассеты"
+	route_hint.text = "Маршрут: вход → зал боя → механизм у прохода → находка (или обход справа) · временные ассеты"
 	route_hint.add_theme_font_size_override("font_size", 18)
 	hud.add_child(route_hint)
 	var label := Label.new()
@@ -59,6 +62,12 @@ func _ready() -> void:
 	status.position = Vector2(18, 165)
 	status.add_theme_font_size_override("font_size", 24)
 	hud.add_child(status)
+	puzzle_panel = PanelContainer.new()
+	puzzle_panel.position = Vector2(18, 365)
+	hud.add_child(puzzle_panel)
+	puzzle_status = Label.new()
+	puzzle_status.add_theme_font_size_override("font_size", 20)
+	puzzle_panel.add_child(puzzle_status)
 	assignment_status = Label.new()
 	var journal_panel := PanelContainer.new()
 	journal_panel.position = Vector2(18, 545)
@@ -122,6 +131,7 @@ func restart_quest() -> void:
 	dialogue.assignment_accepted = false
 	quest.reset()
 	restart_battle()
+	puzzle.reset_puzzle()
 
 func ability_status(index: int) -> String:
 	var hp: int = player.health if index == player.active_character else player.reserve_health
@@ -137,6 +147,8 @@ func ability_status(index: int) -> String:
 func update_status() -> void:
 	if not is_instance_valid(status):
 		return
+	puzzle_panel.visible = player.global_position.distance_to(puzzle.global_position) < 8
+	puzzle_status.text = puzzle.hint_text()
 	status.text = "Герой %d: %d / 100    Резерв: %d / 100    Страж: %d / 100" % [player.active_character + 1, player.health, player.reserve_health, enemy.health]
 	status.text += "\n1 · Метка: %s    2 · Сильный удар: %s" % [ability_status(0), ability_status(1)]
 	if enemy.mark_time > 0:
@@ -150,7 +162,7 @@ func update_status() -> void:
 	elif enemy.health <= 0:
 		status.text += "\nПобеда! R — повторить бой"
 
-func block(at: Vector3, size: Vector3, color: Color) -> void:
+func block(at: Vector3, size: Vector3, color: Color) -> StaticBody3D:
 	var body := StaticBody3D.new()
 	body.position = at
 	var shape := CollisionShape3D.new()
@@ -167,3 +179,4 @@ func block(at: Vector3, size: Vector3, color: Color) -> void:
 	mesh.material_override = material
 	body.add_child(mesh)
 	add_child(body)
+	return body
